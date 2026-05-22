@@ -24,7 +24,7 @@ class RemoteHttpLoader(BaseLoader):
         self._last_hash: str | None = None
 
     async def load(self) -> dict[str, Any]:
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
+        async with httpx.AsyncClient(timeout=self.timeout, trust_env=False) as client:
             response = await client.get(self.url, headers=self.headers)
             response.raise_for_status()
 
@@ -54,7 +54,7 @@ class RemoteHttpLoader(BaseLoader):
             request_headers["If-None-Match"] = self._last_etag
 
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            async with httpx.AsyncClient(timeout=self.timeout, trust_env=False) as client:
                 response = await client.get(self.url, headers=request_headers)
 
                 if response.status_code == 304:

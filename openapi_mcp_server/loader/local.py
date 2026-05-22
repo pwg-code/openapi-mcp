@@ -7,8 +7,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 from openapi_mcp_server.loader.base import BaseLoader
 
 
@@ -24,6 +22,8 @@ class LocalFileLoader(BaseLoader):
         self._last_hash = hashlib.sha256(content.encode()).hexdigest()
 
         if self.path.suffix in (".yaml", ".yml"):
+            import yaml
+
             return yaml.safe_load(content)
         return json.loads(content)
 

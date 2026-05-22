@@ -96,7 +96,12 @@ async def run_server(config: AppConfig) -> None:
     _refresh_manager = RefreshManager(_registry)
     _refresh_manager.start()
 
-    logger.info(f"OpenAPI MCP Server ready with {len(_registry.get_project_names())} project(s)")
+    loaded = sum(1 for n in _registry.get_project_names() if _registry.get_entry(n) and _registry.get_entry(n).status.value == "loaded")
+    total = len(_registry.get_project_names())
+    if loaded < total:
+        logger.warning(f"OpenAPI MCP Server ready: {loaded}/{total} project(s) loaded successfully")
+    else:
+        logger.info(f"OpenAPI MCP Server ready with {total} project(s)")
 
     try:
         await mcp.run_stdio_async()

@@ -34,6 +34,16 @@ class RemoteHttpLoader(BaseLoader):
             content = response.text
             self._last_hash = hashlib.sha256(content.encode()).hexdigest()
 
+            content_type = response.headers.get("content-type", "")
+            is_yaml = (
+                "yaml" in content_type
+                or self.url.endswith((".yaml", ".yml"))
+            )
+
+            if is_yaml:
+                import yaml
+
+                return yaml.safe_load(content)
             import json
 
             return json.loads(content)

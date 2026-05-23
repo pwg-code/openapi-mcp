@@ -250,12 +250,12 @@ def _deref(
 
     result = {}
     for key, value in node.items():
-        if isinstance(value, dict) and "$ref" in value:
+        if isinstance(value, dict):
             result[key] = _deref(value, components, visited, depth + 1)
         elif isinstance(value, list):
             result[key] = [
                 _deref(item, components, visited, depth + 1)
-                if isinstance(item, dict) and "$ref" in item
+                if isinstance(item, dict)
                 else item
                 for item in value
             ]

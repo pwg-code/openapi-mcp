@@ -18,7 +18,7 @@ def _parse_name_value(pair: str, flag: str) -> tuple[str, str]:
 def build_config(
     urls: list[str] | None = None,
     files: list[str] | None = None,
-    refresh_interval: int = 300,
+    refresh_interval: int = 15,
     request_timeout: int = 30,
 ) -> AppConfig:
     """Build AppConfig from CLI arguments."""

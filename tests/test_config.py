@@ -41,7 +41,7 @@ def test_build_config_custom_settings():
 
 def test_build_config_default_settings():
     config = build_config(urls=["api=http://example.com/openapi.json"])
-    assert config.settings.refresh_interval == 300
+    assert config.settings.refresh_interval == 15
     assert config.settings.request_timeout == 30
 
 

@@ -18,7 +18,7 @@ def main():
         "--file", action="append", metavar="NAME=PATH",
         help="Local OpenAPI spec file (e.g. --file petstore=./petstore.json). Can be repeated.",
     )
-    serve_parser.add_argument("--refresh-interval", type=int, default=300, help="Refresh interval in seconds (default: 300)")
+    serve_parser.add_argument("--refresh-interval", type=int, default=15, help="Refresh interval in seconds (default: 15)")
     serve_parser.add_argument("--request-timeout", type=int, default=30, help="Request timeout in seconds (default: 30)")
 
     subparsers.add_parser("status", help="Show project status")

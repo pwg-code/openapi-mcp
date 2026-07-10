@@ -31,7 +31,7 @@ class ProjectConfig(BaseModel):
 
 
 class Settings(BaseModel):
-    refresh_interval: int = 300
+    refresh_interval: int = 15
     request_timeout: int = 30
 
 

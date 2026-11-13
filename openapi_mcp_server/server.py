@@ -37,6 +37,15 @@ _SERVER_INSTRUCTIONS = """\
 - search_endpoints 只返回摘要信息，获取参数/请求体/响应结构必须再调用 get_endpoint_detail
 - 调用任何工具都需要 project 参数，如果不确定项目名，先调用 list_projects
 - 不要通过读取后端代码来查找接口定义，使用本服务的工具更快速、更准确
+
+【项目加载状态与降级】
+- 各项目的规范在后台加载，目标项目可能处于"加载中（loading）"或"失败（error）"状态
+- 调用 list_projects 可查看每个项目的加载状态与失败原因，一次即可判断哪些项目当前可用
+- 当目标项目未就绪时，search_endpoints / get_endpoint_detail / list_tags 会立即返回状态说明而不阻塞：
+  - status=loading：规范仍在后台加载，请稍后重试同一工具
+  - status=error：加载失败（返回原因），可调用 refresh_spec(project=该名称) 立即重试；
+    失败项目也会按退避节奏自动重试，后端恢复后无需人工干预
+- refresh_spec 可用于手动恢复失败的项目，成功后项目立即可用
 """
 
 mcp = FastMCP("openapi-mcp", instructions=_SERVER_INSTRUCTIONS)
@@ -84,6 +93,7 @@ async def search_endpoints(project: str, query: str, method: str | None = None, 
 - limit: 返回数量上限，默认 10
 
 注意：本工具只返回摘要信息（路径、方法、摘要）。如需查看完整参数、请求体和响应结构，请继续调用 get_endpoint_detail。
+如果目标项目处于"加载中/失败"状态，本工具会立即返回包含 status（loading/error）、失败原因与恢复建议的状态说明，请稍后重试或调用 refresh_spec(project=该名称)。
 """
     return await search.handle(_get_registry(), {
         "project": project,
@@ -116,6 +126,7 @@ async def get_endpoint_detail(project: str, path: str, method: str) -> str:
 - method: HTTP 方法（从 search_endpoints 结果中获取）
 
 注意：必须先通过 search_endpoints 获取到 path 和 method，再调用本工具获取详情。
+如果目标项目处于"加载中/失败"状态，本工具会立即返回包含 status（loading/error）、失败原因与恢复建议的状态说明，请稍后重试或调用 refresh_spec(project=该名称)。
 """
     return await detail.handle(_get_registry(), {
         "project": project,
@@ -126,12 +137,13 @@ async def get_endpoint_detail(project: str, path: str, method: str) -> str:
 
 @mcp.tool(name="list_projects")
 async def list_projects_tool() -> str:
-    """列出所有已加载的 OpenAPI 项目（名称、版本、端点数量）。
+    """列出所有 OpenAPI 项目（名称、版本、端点数量），并包含每个项目的加载状态（loading/loaded/error）与最近一次失败的原因。
 
 何时使用：
 - 用户不知道有哪些后端服务/项目时
 - 用户询问“有哪些接口”但未指定具体项目时
 - 调用其他工具前需要获取 project 参数时
+- 需要判断哪些项目当前可用、哪些不可用及原因时
 
 触发示例：
 - “后端有哪些服务”
@@ -140,6 +152,7 @@ async def list_projects_tool() -> str:
 - “有哪些接口”
 
 注意：调用 search_endpoints、get_endpoint_detail、list_tags 等工具都需要 project 参数，如果不确定项目名，请先调用本工具。
+对 status=error 的项目，可通过 refresh_spec(project=该名称) 立即尝试恢复；loading 的项目请稍等片刻再使用。
 """
     return await list_projects.handle(_get_registry(), {})
 
@@ -163,6 +176,7 @@ async def list_tags_tool(project: str) -> str:
 - project: 项目名称（如不确定，先调用 list_projects）
 
 注意：本工具返回标签列表和端点数量。如需查看具体端点，请使用 search_endpoints 并传入 tag 参数进行过滤。
+如果目标项目处于"加载中/失败"状态，本工具会立即返回包含 status（loading/error）、失败原因与恢复建议的状态说明，请稍后重试或调用 refresh_spec(project=该名称)。
 """
     return await list_tags.handle(_get_registry(), {"project": project})
 
@@ -186,6 +200,7 @@ async def refresh_spec(project: str | None = None) -> str:
 - project: 可选，指定要刷新的项目名称。不传则刷新所有项目。
 
 注意：本服务已开启自动刷新（默认每 15 秒，可通过 --refresh-interval 自定义），通常无需手动刷新。仅在自动刷新间隔内有紧急更新需求时使用。
+本工具也可用于恢复加载失败的项目：对失败项目会立即触发一次加载（不受自动重试的退避节奏限制）；若该项目已有加载在进行中，则直接返回该次加载的结果，不会重复发起。
 """
     return await refresh.handle(_get_registry(), _get_refresh_manager(), {
         "project": project,
@@ -205,20 +220,23 @@ async def run_server(config: AppConfig) -> None:
     )
 
     _registry = ProjectRegistry(config)
-    await _registry.load_all()
-
     _refresh_manager = RefreshManager(_registry)
-    _refresh_manager.start()
 
-    loaded = sum(1 for n in _registry.get_project_names() if _registry.get_entry(n) and _registry.get_entry(n).status.value == "loaded")
     total = len(_registry.get_project_names())
-    if loaded < total:
-        logger.warning(f"OpenAPI MCP Server ready: {loaded}/{total} project(s) loaded successfully")
-    else:
-        logger.info(f"OpenAPI MCP Server ready with {total} project(s)")
+    logger.info(
+        f"OpenAPI MCP Server ready: {total} project(s) registered; "
+        f"specs are loading in the background, tools serve immediately"
+    )
+
+    load_task = asyncio.create_task(_registry.load_all())
+    _refresh_manager.start()
 
     try:
         await mcp.run_stdio_async()
     finally:
-        if _refresh_manager:
-            _refresh_manager.stop()
+        _refresh_manager.stop()
+        load_task.cancel()
+        try:
+            await load_task
+        except asyncio.CancelledError:
+            pass

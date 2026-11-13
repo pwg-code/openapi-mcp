@@ -130,6 +130,7 @@ class ProjectEntry(BaseModel):
     last_checked: datetime | None = None
     error_message: str | None = None
     content_hash: str | None = None
+    failure_count: int = 0
 
     model_config = {"arbitrary_types_allowed": True}
 
@@ -159,10 +160,20 @@ class ProjectInfo(BaseModel):
     endpoint_count: int = 0
     last_updated: str | None = None
     status: str
+    error_message: str | None = None
 
 
 class ListProjectsResult(BaseModel):
     projects: list[ProjectInfo]
+
+
+class ProjectNotReadyStatus(BaseModel):
+    """Structured response returned when a project exists but its spec is not usable yet."""
+
+    project: str
+    status: str
+    message: str | None = None
+    suggestion: str
 
 
 class ListTagsResult(BaseModel):

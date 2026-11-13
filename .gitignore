@@ -68,3 +68,5 @@ venv.bak/
 *.swo
 *~
 .DS_Store
+
+/temp

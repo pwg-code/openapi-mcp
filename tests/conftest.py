@@ -1,5 +1,6 @@
 """Shared test fixtures."""
 
+import asyncio
 import json
 from pathlib import Path
 
@@ -11,6 +12,39 @@ from openapi_mcp_server.registry import ProjectRegistry
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 PETSTORE_SPEC = FIXTURES_DIR / "petstore.json"
+
+MINIMAL_SPEC = {
+    "openapi": "3.0.0",
+    "info": {"title": "Fake API", "version": "1.0.0"},
+    "paths": {},
+}
+
+
+class FakeLoader:
+    """Scriptable loader: per-call delays, failures, then success."""
+
+    def __init__(self, results=None):
+        # results: list of either float (delay before success) or Exception (fail after delay)
+        self.results = list(results) if results else [0.0]
+        self.calls = 0
+        self.delays = []
+
+    async def load(self):
+        self.calls += 1
+        idx = min(self.calls, len(self.results)) - 1
+        outcome = self.results[idx]
+        delay, error = (outcome, None) if isinstance(outcome, (int, float)) else (0.0, outcome)
+        if delay:
+            self.delays.append(delay)
+            await asyncio.sleep(delay)
+        else:
+            self.delays.append(0.0)
+        if error is not None:
+            raise error
+        return json.loads(json.dumps(MINIMAL_SPEC))
+
+    async def has_changed(self):
+        return False
 
 
 @pytest.fixture

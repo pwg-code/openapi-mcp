@@ -55,6 +55,13 @@ uv pip install -e .
 pip install -e .
 ```
 
+> **`openapi-mcp` 可执行文件从哪来？** 上面的安装命令会根据 `pyproject.toml` 中的 `[project.scripts]` 定义，自动在虚拟环境的可执行目录生成 `openapi-mcp` 命令：
+>
+> - Windows：`<项目目录>/.venv/Scripts/openapi-mcp.exe`
+> - Linux / macOS：`<项目目录>/.venv/bin/openapi-mcp`
+>
+> 下文配置中的 `<OPENAPI_MCP_PATH>` 即替换为这个文件的完整路径。如果不确定实际位置，可在激活虚拟环境后执行 `where openapi-mcp`（Windows）或 `which openapi-mcp`（Linux / macOS）查询。
+
 ---
 
 ## Claude Code 配置

@@ -55,6 +55,13 @@ Or using pip:
 pip install -e .
 ```
 
+> **Where does the `openapi-mcp` executable come from?** The install command above automatically generates the `openapi-mcp` command in the virtualenv's executable directory, based on the `[project.scripts]` entry in `pyproject.toml`:
+>
+> - Windows: `<project dir>/.venv/Scripts/openapi-mcp.exe`
+> - Linux / macOS: `<project dir>/.venv/bin/openapi-mcp`
+>
+> In the config examples below, `<OPENAPI_MCP_PATH>` is that file's full path. If unsure of the exact location, activate the virtualenv and run `where openapi-mcp` (Windows) or `which openapi-mcp` (Linux / macOS) to find it.
+
 ---
 
 ## Claude Code Configuration
